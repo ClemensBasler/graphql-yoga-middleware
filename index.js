@@ -1,59 +1,43 @@
 const { GraphQLServer } = require('graphql-yoga')
+const { defaultFieldResolver } = require("graphql");
+const { SchemaDirectiveVisitor } = require("graphql-tools");
+
+
+class UpperCaseDirective extends SchemaDirectiveVisitor {
+  visitFieldDefinition(field) {
+    console.log("hi");
+    const { resolve = defaultFieldResolver } = field;
+    field.resolve = async function (...args) {
+      const result = await resolve.apply(this, args);
+      if (typeof result === "string") {
+        return result.toUpperCase();
+      }
+      return result;
+    };
+  }
+}
 
 const typeDefs = `
-  type Query {
-    open: String!
-    secured: String!
-    me: Me!
-  }
-  type Me {
-    name: String!
-    surname: String!
-    age: Int!
-  }
-`
+directive @upper on FIELD_DEFINITION
+
+type Query {
+  hello: String @upper
+}`;
 
 const resolvers = {
   Query: {
-    open: () => `Open data, everyone's welcome!`,
-    secured: () => `Personal diary - this is for my eyes only!`,
-    me: () => ({}),
-  },
-  Me: {
-    name: () => 'Ben',
-    surname: () => 'Cool',
-    age: () => 18,
-  },
-}
-
-// Middleware - Permissions
-
-const code = 'supersecret'
-const isLoggedIn = async (resolve, parent, args, ctx, info) => {
-  // Include your agent code as Authorization: <token> header.
-  const permit = ctx.request.get('Authorization') === code
-
-  if (!permit) {
-    throw new Error(`Not authorised!`)
+    hello: () => `Hello Guys`,
   }
-
-  return resolve()
-}
-
-const permissions = {
-  Query: {
-    secured: isLoggedIn,
-  },
-  Me: isLoggedIn,
 }
 
 // Server
-
 const server = new GraphQLServer({
   typeDefs,
   resolvers,
   context: req => ({ ...req }),
-  middleware: [permissions],
+  schemaDirectives: {
+    upper: UpperCaseDirective // make sure the key is 'constraint'
+  },
 })
 
 server.start(() => console.log('Server is running on http://localhost:4000'))
