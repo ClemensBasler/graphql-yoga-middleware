@@ -5,7 +5,6 @@ const { SchemaDirectiveVisitor } = require("graphql-tools");
 
 class UpperCaseDirective extends SchemaDirectiveVisitor {
   visitFieldDefinition(field) {
-    console.log("hi");
     const { resolve = defaultFieldResolver } = field;
     field.resolve = async function (...args) {
       const result = await resolve.apply(this, args);
